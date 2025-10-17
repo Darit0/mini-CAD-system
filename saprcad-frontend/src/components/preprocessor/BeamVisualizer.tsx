@@ -24,9 +24,10 @@ const BeamVisualizer: React.FC<BeamVisualizerProps> = ({ project }) => {
     const BASE_LENGTH_SCALE = 50;
     const MAX_HEIGHT = 20;
     const MIN_HEIGHT = 8;
-    const ARROW_LENGTH = 25; // Длина стрелки
-    const NODE_OFFSET_X = ARROW_LENGTH + 10; // Увеличиваем отступ для стрелки
-    const MAX_VISIBLE_WIDTH = 800;
+    const ARROW_LENGTH = 25;
+    const NODE_OFFSET_X = ARROW_LENGTH + 10;
+    const MAX_VISUAL_LENGTH = 300; // Максимальная длина для одной балки в пикселях
+    const MAX_TOTAL_WIDTH = 800; // Максимальная общая ширина
 
     // Предварительный расчёт позиций
     const rodPositions: { x: number; width: number; height: number; y: number }[] = [];
@@ -35,12 +36,22 @@ const BeamVisualizer: React.FC<BeamVisualizerProps> = ({ project }) => {
     // Рассчитываем общую длину конструкции
     const totalLength = project.rods.reduce((sum, rod) => sum + rod.length, 0);
 
-    // Автоматическое масштабирование длины
-    let lengthScale = BASE_LENGTH_SCALE;
-    const requiredWidth = totalLength * BASE_LENGTH_SCALE + 2 * NODE_OFFSET_X;
+    // Находим максимальную длину одного стержня
+    const maxRodLength = Math.max(...project.rods.map(rod => rod.length));
 
-    if (requiredWidth > MAX_VISIBLE_WIDTH) {
-        lengthScale = (MAX_VISIBLE_WIDTH - 2 * NODE_OFFSET_X) / totalLength;
+    // Улучшенное масштабирование длины
+    let lengthScale = BASE_LENGTH_SCALE;
+
+    // Сначала ограничиваем максимальную длину одного стержня
+    const maxSingleRodWidth = maxRodLength * BASE_LENGTH_SCALE;
+    if (maxSingleRodWidth > MAX_VISUAL_LENGTH) {
+        lengthScale = MAX_VISUAL_LENGTH / maxRodLength;
+    }
+
+    // Затем проверяем общую ширину
+    const requiredWidth = totalLength * lengthScale + 2 * NODE_OFFSET_X;
+    if (requiredWidth > MAX_TOTAL_WIDTH) {
+        lengthScale = (MAX_TOTAL_WIDTH - 2 * NODE_OFFSET_X) / totalLength;
     }
 
     let currentX = NODE_OFFSET_X;
@@ -84,6 +95,8 @@ const BeamVisualizer: React.FC<BeamVisualizerProps> = ({ project }) => {
         }
     }
 
+    const finalWidth = Math.max(MAX_TOTAL_WIDTH, requiredWidth);
+
     return (
         <div style={{ overflow: 'auto', padding: '10px 0', paddingLeft: '20px' }}>
             <svg
@@ -92,9 +105,9 @@ const BeamVisualizer: React.FC<BeamVisualizerProps> = ({ project }) => {
                 style={{
                     minWidth: '600px',
                     backgroundColor: '#fafafa',
-                    maxWidth: `${MAX_VISIBLE_WIDTH}px`
+                    maxWidth: `${MAX_TOTAL_WIDTH}px`
                 }}
-                viewBox={`0 0 ${Math.max(MAX_VISIBLE_WIDTH, requiredWidth)} 180`} // Добавляем viewBox для правильного отображения
+                viewBox={`0 0 ${finalWidth} 180`}
             >
                 <defs>
                     {/* Улучшенная стрелка для сосредоточенных сил с палочкой */}
@@ -183,12 +196,12 @@ const BeamVisualizer: React.FC<BeamVisualizerProps> = ({ project }) => {
                 {project.nodes.map((node, i) => {
                     const nodeX = nodePositions[i];
                     const isLastNode = i === project.nodes.length - 1;
-                    const isFixed = node.isFixed;
+                    const fixed = node.fixed;
 
                     return (
                         <g key={node.id}>
                             {/* Опора (заделка) */}
-                            {isFixed && (
+                            {fixed && (
                                 <>
                                     {/* Стенка */}
                                     <line x1={nodeX} y1={90} x2={nodeX} y2={110} stroke="#000" strokeWidth="2" />
@@ -253,7 +266,8 @@ const BeamVisualizer: React.FC<BeamVisualizerProps> = ({ project }) => {
                 {/* Информация о масштабе */}
                 {lengthScale !== BASE_LENGTH_SCALE && (
                     <text x={NODE_OFFSET_X} y={170} fontSize="10" fill="#888">
-                        Масштаб длины уменьшен для отображения (1м = {(lengthScale).toFixed(1)}px)
+                        Масштаб длины: 1м = {(lengthScale).toFixed(1)}px
+                        {maxRodLength * BASE_LENGTH_SCALE > MAX_VISUAL_LENGTH && " (длинные балки ограничены)"}
                     </text>
                 )}
             </svg>

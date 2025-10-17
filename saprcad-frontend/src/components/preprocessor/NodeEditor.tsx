@@ -19,7 +19,7 @@ const NodeEditor: React.FC<NodeEditorProps> = ({ nodes, rods, onChange }) => {
             ...nodes,
             {
                 id: newId,
-                isFixed: false,
+                fixed: false,
                 externalForce: 0.0,
             },
         ]);
@@ -28,7 +28,7 @@ const NodeEditor: React.FC<NodeEditorProps> = ({ nodes, rods, onChange }) => {
     const updateNode = (index: number, field: keyof Node, value: string | boolean | number) => {
         const updated = [...nodes];
 
-        if (field === 'isFixed') {
+        if (field === 'fixed') {
             // Нормализуем булево значение
             let boolValue: boolean;
             if (typeof value === 'string') {
@@ -104,12 +104,12 @@ const NodeEditor: React.FC<NodeEditorProps> = ({ nodes, rods, onChange }) => {
                         <td style={{ textAlign: 'center' }}>
                             <input
                                 type="checkbox"
-                                checked={node.isFixed}
+                                checked={node.fixed}
                                 disabled={!canFixNode(i)}
-                                onChange={e => updateNode(i, 'isFixed', e.target.checked)}
+                                onChange={e => updateNode(i, 'fixed', e.target.checked)}
                                 title={!canFixNode(i) ? "Заделки можно ставить только на крайних узлах" : ""}
                             />
-                            {!canFixNode(i) && node.isFixed && (
+                            {!canFixNode(i) && node.fixed && (
                                 <span style={{color: 'red', fontSize: '0.8em', marginLeft: '5px'}}>⚠️</span>
                             )}
                         </td>
