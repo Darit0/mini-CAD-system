@@ -87,6 +87,9 @@ public class ProjectValidator {
         // Проверка структуры стержневой системы
         validateStructure(input.getRods(), input.getNodes(), errors);
 
+        // Проверка расположения опор (опоры не могут быть в середине конструкции)
+        validateSupportLocations(input.getNodes(), errors);
+
         // Проверка критических ошибок
         validateCritical(input, errors);
 
@@ -241,6 +244,39 @@ public class ProjectValidator {
 
         if (!hasFixedSupport) {
             errors.add("Система должна иметь хотя бы одну заделку (фиксированный узел).");
+        }
+    }
+
+    /**
+     * Проверяет, что фиксированные опоры находятся только на концах конструкции
+     * Опоры не могут быть расположены в середине конструкции
+     */
+    private void validateSupportLocations(List<Node> nodes, List<String> errors) {
+        if (nodes == null || nodes.size() < 3) {
+            return; // Для менее чем 3 узлов не может быть "середины"
+        }
+
+        // Находим минимальный и максимальный ID узлов
+        int minId = Integer.MAX_VALUE;
+        int maxId = Integer.MIN_VALUE;
+
+        for (Node node : nodes) {
+            int id = node.getId();
+            minId = Math.min(minId, id);
+            maxId = Math.max(maxId, id);
+        }
+
+        // Проверяем каждый фиксированный узел
+        for (Node node : nodes) {
+            if (node.isFixed()) {
+                int nodeId = node.getId();
+                // Если узел не первый и не последний - это ошибка
+                if (nodeId != minId && nodeId != maxId) {
+                    errors.add("Фиксированная опора не может находиться в середине конструкции. " +
+                            "Узел ID=" + nodeId + " является фиксированной опорой, но не находится на конце конструкции. " +
+                            "Опоры могут быть только на крайних узлах (ID: " + minId + " или " + maxId + ").");
+                }
+            }
         }
     }
 
