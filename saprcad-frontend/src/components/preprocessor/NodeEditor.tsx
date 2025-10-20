@@ -47,6 +47,9 @@ const NodeEditor: React.FC<NodeEditorProps> = ({ nodes, rods, onChange }) => {
             // Разрешаем ввод отрицательных значений и пустую строку
             if (value === '') {
                 updated[index][field] = 0;
+            } else if (value === '-' || value === '-.') {
+                // Сохраняем как строку для промежуточного состояния
+                updated[index][field] = value as any;
             } else {
                 const numValue = typeof value === 'string' ? parseFloat(value) || 0 : value;
                 updated[index][field] = numValue as number;
@@ -59,8 +62,11 @@ const NodeEditor: React.FC<NodeEditorProps> = ({ nodes, rods, onChange }) => {
     };
 
     const handleForceInput = (index: number, value: string) => {
-        // Разрешаем: пустую строку, отрицательные числа, десятичные числа
-        if (value === '' || value === '-' || /^-?\d*\.?\d*$/.test(value)) {
+        // Разрешаем: пустую строку, минус, минус с точкой, отрицательные числа, десятичные числа
+        if (value === '' ||
+            value === '-' ||
+            value === '-.' ||
+            /^-?\d*\.?\d*$/.test(value)) {
             updateNode(index, 'externalForce', value);
         }
     };
@@ -74,7 +80,26 @@ const NodeEditor: React.FC<NodeEditorProps> = ({ nodes, rods, onChange }) => {
             return;
         }
 
-        onChange(nodes.filter((_, i) => i !== index));
+        // Удаляем узел
+        const updatedNodes = nodes.filter((_, i) => i !== index);
+
+        // Переиндексируем ID узлов, чтобы они шли последовательно от 0
+        const reindexedNodes = updatedNodes.map((node, newIndex) => ({
+            ...node,
+            id: newIndex
+        }));
+
+        onChange(reindexedNodes);
+    };
+
+    // Функция для получения отображаемого значения
+    const getDisplayValue = (node: Node): string => {
+        if (typeof node.externalForce === 'string') {
+            // Если значение хранится как строка (промежуточное состояние), возвращаем как есть
+            return node.externalForce;
+        }
+        // Если это число и равно 0, возвращаем пустую строку
+        return node.externalForce === 0 ? '' : node.externalForce.toString();
     };
 
     return (
@@ -116,11 +141,20 @@ const NodeEditor: React.FC<NodeEditorProps> = ({ nodes, rods, onChange }) => {
                         <td>
                             <input
                                 type="text"
-                                value={node.externalForce === 0 ? '' : node.externalForce.toString()}
+                                value={getDisplayValue(node)}
                                 onChange={e => handleForceInput(i, e.target.value)}
                                 onBlur={(e) => {
-                                    if (e.target.value === '' || e.target.value === '-') {
+                                    const value = e.target.value;
+                                    if (value === '' || value === '-' || value === '-.') {
                                         updateNode(i, 'externalForce', 0);
+                                    } else {
+                                        // При потере фокуса нормализуем значение
+                                        const numValue = parseFloat(value);
+                                        if (isNaN(numValue)) {
+                                            updateNode(i, 'externalForce', 0);
+                                        } else {
+                                            updateNode(i, 'externalForce', numValue);
+                                        }
                                     }
                                 }}
                                 placeholder="0"

@@ -32,9 +32,16 @@ const RodEditor: React.FC<RodEditorProps> = ({ rods, onChange }) => {
             // @ts-ignore
             updated[index][field] = Math.max(0, numValue);
         } else {
-            // Для distributedLoad разрешаем любые значения
-            // @ts-ignore
-            updated[index][field] = typeof value === 'string' ? parseFloat(value) || 0 : value;
+            // Для distributedLoad разрешаем ввод отрицательных значений и промежуточные состояния
+            if (value === '') {
+                updated[index][field] = 0;
+            } else if (value === '-' || value === '-.') {
+                // Сохраняем как строку для промежуточного состояния
+                updated[index][field] = value as any;
+            } else {
+                const numValue = typeof value === 'string' ? parseFloat(value) || 0 : value;
+                updated[index][field] = numValue as number;
+            }
         }
 
         onChange(updated);
@@ -54,6 +61,16 @@ const RodEditor: React.FC<RodEditorProps> = ({ rods, onChange }) => {
 
     const removeRod = (index: number) => {
         onChange(rods.filter((_, i) => i !== index));
+    };
+
+    // Функция для получения отображаемого значения distributedLoad
+    const getDisplayValue = (rod: Rod): string => {
+        if (typeof rod.distributedLoad === 'string') {
+            // Если значение хранится как строка (промежуточное состояние), возвращаем как есть
+            return rod.distributedLoad;
+        }
+        // Если это число и равно 0, возвращаем пустую строку
+        return rod.distributedLoad === 0 ? '' : rod.distributedLoad.toString();
     };
 
     return (
@@ -117,18 +134,29 @@ const RodEditor: React.FC<RodEditorProps> = ({ rods, onChange }) => {
                         <td>
                             <input
                                 type="text"
-                                value={rod.distributedLoad}
+                                value={getDisplayValue(rod)}
                                 onChange={e => {
-                                    // Разрешаем ввод: пустая строка, минус, числа с минусом, десятичные числа
+                                    // Разрешаем ввод: пустая строка, минус, минус с точкой, числа с минусом, десятичные числа
                                     const value = e.target.value;
-                                    if (value === '' || value === '-' || /^-?\d*\.?\d*$/.test(value)) {
+                                    if (value === '' ||
+                                        value === '-' ||
+                                        value === '-.' ||
+                                        /^-?\d*\.?\d*$/.test(value)) {
                                         updateRod(i, 'distributedLoad', value);
                                     }
                                 }}
                                 onBlur={(e) => {
-                                    // При потере фокуса преобразуем пустую строку или только минус в 0
-                                    if (e.target.value === '' || e.target.value === '-') {
+                                    // При потере фокуса нормализуем значение
+                                    const value = e.target.value;
+                                    if (value === '' || value === '-' || value === '-.') {
                                         updateRod(i, 'distributedLoad', 0);
+                                    } else {
+                                        const numValue = parseFloat(value);
+                                        if (isNaN(numValue)) {
+                                            updateRod(i, 'distributedLoad', 0);
+                                        } else {
+                                            updateRod(i, 'distributedLoad', numValue);
+                                        }
                                     }
                                 }}
                                 style={{ width: '80px', textAlign: 'right' }}
