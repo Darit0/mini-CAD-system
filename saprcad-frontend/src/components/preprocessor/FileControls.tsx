@@ -9,6 +9,7 @@ interface FileControlsProps {
     onSaveJson: () => void;
     onSaveBackend: () => void;
     disabled: boolean;
+    hasProjectId?: boolean;
 }
 
 const FileControls: React.FC<FileControlsProps> = ({
@@ -19,6 +20,7 @@ const FileControls: React.FC<FileControlsProps> = ({
                                                        onSaveJson,
                                                        onSaveBackend,
                                                        disabled,
+                                                       hasProjectId,
                                                    }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -37,7 +39,7 @@ const FileControls: React.FC<FileControlsProps> = ({
     };
 
     return (
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <input
                 type="file"
                 ref={fileInputRef}
@@ -54,10 +56,22 @@ const FileControls: React.FC<FileControlsProps> = ({
             <button onClick={onSaveJson} disabled={disabled}>
                 Сохранить в .json
             </button>
-            <button onClick={onDownloadExcel} disabled={disabled}>
+            <button
+                onClick={onDownloadExcel}
+                disabled={disabled || !hasProjectId}
+                title={!hasProjectId ? 'Сначала сохраните проект в системе' : ''}
+            >
                 Экспорт в Excel
             </button>
-            <button onClick={onSaveBackend} disabled={disabled} style={{ backgroundColor: '#4CAF50', color: 'white' }}>
+            <button
+                onClick={onSaveBackend}
+                disabled={disabled}
+                style={{
+                    backgroundColor: '#4CAF50',
+                    color: 'white',
+                    padding: '6px 12px'
+                }}
+            >
                 Сохранить в системе → Расчёт
             </button>
         </div>

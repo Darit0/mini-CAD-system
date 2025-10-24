@@ -1,4 +1,6 @@
+// src/pages/PreprocessorPage.tsx
 import React, { useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useProjectState } from '../hooks/UseProjectState';
 import BeamVisualizer from '../components/preprocessor/BeamVisualizer';
 import RodEditor from '../components/preprocessor/RodEditor';
@@ -6,9 +8,11 @@ import NodeEditor from '../components/preprocessor/NodeEditor';
 import FileControls from '../components/preprocessor/FileControls';
 
 const PreprocessorPage: React.FC = () => {
+    const navigate = useNavigate();
     const {
         project,
         setProject,
+        projectId,
         loading,
         errors,
         saveToBackend,
@@ -19,7 +23,12 @@ const PreprocessorPage: React.FC = () => {
         loadFromFile,
     } = useProjectState();
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const handleSaveAndGoToProcessor = async () => {
+        const id = await saveToBackend(project);
+        if (id) {
+            navigate('/processor', { state: { projectId: id } });
+        }
+    };
 
     return (
         <div style={{ padding: '1rem', fontFamily: 'Arial, sans-serif' }}>
@@ -27,6 +36,7 @@ const PreprocessorPage: React.FC = () => {
 
             {errors.length > 0 && (
                 <div style={{ color: 'red', marginBottom: '1rem' }}>
+                    <strong>Ошибки валидации:</strong>
                     <ul>
                         {errors.map((e, i) => (
                             <li key={i}>{e}</li>
@@ -41,8 +51,9 @@ const PreprocessorPage: React.FC = () => {
                 onDownloadExcel={downloadExcel}
                 onDownloadTemplate={downloadTemplate}
                 onSaveJson={saveToFile}
-                onSaveBackend={() => saveToBackend(project)}
+                onSaveBackend={handleSaveAndGoToProcessor}
                 disabled={loading}
+                hasProjectId={!!projectId}
             />
 
             <div style={{ display: 'flex', gap: '2rem', marginTop: '1rem' }}>
@@ -57,30 +68,12 @@ const PreprocessorPage: React.FC = () => {
                     <h3>Узлы</h3>
                     <NodeEditor
                         nodes={project.nodes}
-                        rods={project.rods} // Передаем rods для проверок
-                        onChange={(nodes) => setProject({ ...project, nodes })}
-                    />
+                        onChange={(nodes) => setProject({...project, nodes})} rods={[]}                    />
                 </div>
             </div>
 
             <h3 style={{ marginTop: '2rem' }}>Визуализация</h3>
             <BeamVisualizer project={project} />
-
-            <input
-                type="file"
-                ref={fileInputRef}
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                        if (file.name.endsWith('.xlsx')) {
-                            loadFromExcel(file);
-                        } else if (file.name.endsWith('.json')) {
-                            loadFromFile(file);
-                        }
-                    }
-                }}
-            />
         </div>
     );
 };

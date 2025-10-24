@@ -227,7 +227,7 @@ const BeamVisualizer: React.FC<BeamVisualizerProps> = ({ project }) => {
                                     </text>
                                     <text
                                         x={pos.x + pos.width / 2}
-                                        y={65}
+                                        y={45}
                                         textAnchor="middle"
                                         fontSize="9"
                                         fill="#666"
@@ -307,17 +307,6 @@ const BeamVisualizer: React.FC<BeamVisualizerProps> = ({ project }) => {
                                         </>
                                     )}
 
-                                    {/* Подпись распределенной нагрузки - ВСЕГДА отображается */}
-                                    <text
-                                        x={pos.x + pos.width / 2}
-                                        y={pos.y - 8}
-                                        textAnchor="middle"
-                                        fontSize={pos.width > 40 ? "8" : "7"}
-                                        fill={rod.distributedLoad > 0 ? 'green' : 'red'}
-                                        fontWeight="bold"
-                                    >
-                                        q={rod.distributedLoad.toFixed(1)}
-                                    </text>
                                 </>
                             )}
                         </g>
@@ -383,7 +372,7 @@ const BeamVisualizer: React.FC<BeamVisualizerProps> = ({ project }) => {
                                 fontWeight="bold"
                             >
                                 У{node.id}
-                                {fixed && " ⚓"}
+                                {fixed}
                             </text>
 
                             {/* Маркер узла */}
