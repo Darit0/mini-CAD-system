@@ -316,14 +316,13 @@ const BeamVisualizer: React.FC<BeamVisualizerProps> = ({ project }) => {
                 {/* Узлы */}
                 {project.nodes.map((node, i) => {
                     const nodeX = nodePositions[i];
-                    const isLastNode = i === project.nodes.length - 1;
-                    const fixed = node.fixed;
+                    const isFirstNode = i === 0;
                     const labelPos = nodeLabelPositions[i];
 
                     return (
                         <g key={node.id}>
-                            {/* Опора (заделка) */}
-                            {fixed && (
+                            {/* Опора (заделка) - ВСЕ штрихи под одинаковым углом 45 градусов ВПРАВО */}
+                            {node.fixed && (
                                 <>
                                     <line
                                         x1={nodeX}
@@ -333,17 +332,26 @@ const BeamVisualizer: React.FC<BeamVisualizerProps> = ({ project }) => {
                                         stroke="#000"
                                         strokeWidth="3"
                                     />
-                                    {[...Array(6)].map((_, idx) => (
-                                        <line
-                                            key={idx}
-                                            x1={nodeX}
-                                            y1={90 + idx * 5}
-                                            x2={isLastNode ? nodeX + 8 : nodeX - 8}
-                                            y2={90 + idx * 5 + 4}
-                                            stroke="#000"
-                                            strokeWidth="1.5"
-                                        />
-                                    ))}
+                                    {[...Array(6)].map((_, idx) => {
+                                        // ВСЕГДА одинаковый угол 45 градусов ВПРАВО (dx = 8, dy = 4)
+                                        const dx = 8;
+                                        const dy = 4;
+
+                                        // Для первого узла - смещаем начальную точку влево чтобы штрихи были снаружи
+                                        const startX = isFirstNode ? nodeX - 8 : nodeX;
+
+                                        return (
+                                            <line
+                                                key={idx}
+                                                x1={startX}
+                                                y1={90 + idx * 5}
+                                                x2={startX + dx}
+                                                y2={90 + idx * 5 + dy}
+                                                stroke="#000"
+                                                strokeWidth="1.5"
+                                            />
+                                        );
+                                    })}
                                 </>
                             )}
 
@@ -372,7 +380,7 @@ const BeamVisualizer: React.FC<BeamVisualizerProps> = ({ project }) => {
                                 fontWeight="bold"
                             >
                                 У{node.id}
-                                {fixed}
+                                {node.fixed}
                             </text>
 
                             {/* Маркер узла */}
