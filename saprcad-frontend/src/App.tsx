@@ -1,21 +1,19 @@
+// src/App.tsx
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import HomePage from './pages/HomePage';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import PreprocessorPage from './pages/PreprocessorPage';
-import ProcessorPage from './pages/ProcessorPage';
+import CalculationSuccessPage from './pages/CalculationSuccessPage';
 import PostprocessorPage from './pages/PostprocessorPage';
 
 const App: React.FC = () => {
     return (
         <Router>
-            <div className="App">
-                <Routes>
-                    <Route path="/" element={<HomePage />} />
-                    <Route path="/preprocessor" element={<PreprocessorPage />} />
-                    <Route path="/processor" element={<ProcessorPage />} />
-                    <Route path="/postprocessor" element={<PostprocessorPage />} />
-                </Routes>
-            </div>
+            <Routes>
+                <Route path="/" element={<Navigate to="/preprocessor" replace />} />
+                <Route path="/preprocessor" element={<PreprocessorPage />} />
+                <Route path="/calculation-success" element={<CalculationSuccessPage />} />
+                <Route path="/postprocessor" element={<PostprocessorPage />} />
+            </Routes>
         </Router>
     );
 };

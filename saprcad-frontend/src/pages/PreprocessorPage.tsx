@@ -1,5 +1,5 @@
 // src/pages/PreprocessorPage.tsx
-import React, { useRef } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjectState } from '../hooks/UseProjectState';
 import BeamVisualizer from '../components/preprocessor/BeamVisualizer';
@@ -12,32 +12,30 @@ const PreprocessorPage: React.FC = () => {
     const {
         project,
         setProject,
-        projectId,
         loading,
         errors,
-        saveToBackend,
-        loadFromExcel,
-        downloadExcel,
-        downloadTemplate,
+        validateAndCalculate,
         saveToFile,
         loadFromFile,
     } = useProjectState();
 
-    const handleSaveAndGoToProcessor = async () => {
-        const id = await saveToBackend(project);
-        if (id) {
-            navigate('/processor', { state: { projectId: id } });
+    const handleCalculate = async () => {
+        const result = await validateAndCalculate();
+        if (result.success && result.displacements) {
+            navigate('/calculation-success', {
+                state: { project, displacements: result.displacements },
+            });
         }
     };
 
     return (
-        <div style={{ padding: '1rem', fontFamily: 'Arial, sans-serif' }}>
-            <h2>Препроцессор</h2>
+        <div style={{ padding: '1.5rem', fontFamily: 'Arial, sans-serif', maxWidth: '1400px', margin: '0 auto' }}>
+            <h2 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>Препроцессор: ввод данных и визуализация</h2>
 
             {errors.length > 0 && (
-                <div style={{ color: 'red', marginBottom: '1rem' }}>
+                <div style={{ color: 'red', marginBottom: '1.2rem', padding: '0.8rem', backgroundColor: '#ffebee', borderRadius: '4px' }}>
                     <strong>Ошибки валидации:</strong>
-                    <ul>
+                    <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
                         {errors.map((e, i) => (
                             <li key={i}>{e}</li>
                         ))}
@@ -46,33 +44,30 @@ const PreprocessorPage: React.FC = () => {
             )}
 
             <FileControls
-                onUploadExcel={(file) => loadFromExcel(file)}
                 onUploadJson={(file) => loadFromFile(file)}
-                onDownloadExcel={downloadExcel}
-                onDownloadTemplate={downloadTemplate}
                 onSaveJson={saveToFile}
-                onSaveBackend={handleSaveAndGoToProcessor}
+                onCalculate={handleCalculate}
                 disabled={loading}
-                hasProjectId={!!projectId}
             />
 
-            <div style={{ display: 'flex', gap: '2rem', marginTop: '1rem' }}>
-                <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', gap: '2rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '400px', overflowX: 'auto' }}>
                     <h3>Стержни</h3>
                     <RodEditor
                         rods={project.rods}
                         onChange={(rods) => setProject({ ...project, rods })}
                     />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: '400px', overflowX: 'auto' }}>
                     <h3>Узлы</h3>
                     <NodeEditor
                         nodes={project.nodes}
-                        onChange={(nodes) => setProject({...project, nodes})} rods={[]}                    />
+                        onChange={(nodes) => setProject({...project, nodes})} rods={[]}
+                    />
                 </div>
             </div>
 
-            <h3 style={{ marginTop: '2rem' }}>Визуализация</h3>
+            <h3 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Визуализация конструкции</h3>
             <BeamVisualizer project={project} />
         </div>
     );
