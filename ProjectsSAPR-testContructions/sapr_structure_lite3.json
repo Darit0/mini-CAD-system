@@ -1,0 +1,24 @@
+{
+  "rods": [
+    {
+      "id": 0,
+      "length": 1,
+      "area": 1,
+      "elasticModulus": 1,
+      "allowableStress": 1,
+      "distributedLoad": 1
+    }
+  ],
+  "nodes": [
+    {
+      "id": 0,
+      "externalForce": 0,
+      "fixed": true
+    },
+    {
+      "id": 1,
+      "externalForce": 0,
+      "fixed": false
+    }
+  ]
+}
