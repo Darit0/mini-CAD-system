@@ -58,7 +58,12 @@ public class CalculateDisplacementsService {
 
         int m = freeNodes.size();
         if (m == 0) {
-            throw new IllegalArgumentException("Нет свободных узлов — система не имеет решения.");
+            // Все узлы закреплены → все перемещения = 0
+            List<Double> zeroDelta = new ArrayList<>();
+            for (int i = 0; i < n; i++) {
+                zeroDelta.add(0.0);
+            }
+            return new DisplacementVector(zeroDelta);
         }
 
         // Формируем сокращённую матрицу A_reduced и вектор F_reduced
