@@ -1,6 +1,6 @@
 // src/pages/PreprocessorPage.tsx
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useProjectState } from '../hooks/UseProjectState';
 import BeamVisualizer from '../components/preprocessor/BeamVisualizer';
 import RodEditor from '../components/preprocessor/RodEditor';
@@ -9,6 +9,7 @@ import FileControls from '../components/preprocessor/FileControls';
 
 const PreprocessorPage: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const {
         project,
         setProject,
@@ -17,7 +18,17 @@ const PreprocessorPage: React.FC = () => {
         validateAndCalculate,
         saveToFile,
         loadFromFile,
+        clearProject,
     } = useProjectState();
+
+    // Загрузка project из location.state (при возврате из постпроцессора)
+    useEffect(() => {
+        const state = location.state as { project?: any } | null;
+        if (state?.project) {
+            setProject(state.project);
+            // Ошибки сбрасываем — валидация будет при расчёте
+        }
+    }, [location.state, setProject]);
 
     const handleCalculate = async () => {
         const result = await validateAndCalculate();
@@ -30,7 +41,21 @@ const PreprocessorPage: React.FC = () => {
 
     return (
         <div style={{ padding: '1.5rem', fontFamily: 'Arial, sans-serif', maxWidth: '1400px', margin: '0 auto' }}>
-            <h2 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>Препроцессор: ввод данных и визуализация</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h2>Препроцессор: ввод данных и визуализация</h2>
+                <button
+                    onClick={clearProject}
+                    style={{
+                        padding: '6px 12px',
+                        backgroundColor: '#e0e0e0',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                    }}
+                >
+                    Очистить проект
+                </button>
+            </div>
 
             {errors.length > 0 && (
                 <div style={{ color: 'red', marginBottom: '1.2rem', padding: '0.8rem', backgroundColor: '#ffebee', borderRadius: '4px' }}>
@@ -62,7 +87,7 @@ const PreprocessorPage: React.FC = () => {
                     <h3>Узлы</h3>
                     <NodeEditor
                         nodes={project.nodes}
-                        onChange={(nodes) => setProject({...project, nodes})} rods={[]}
+                        onChange={(nodes) => setProject({ ...project, nodes })} rods={[]}
                     />
                 </div>
             </div>

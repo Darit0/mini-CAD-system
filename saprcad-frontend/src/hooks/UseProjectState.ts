@@ -45,6 +45,11 @@ export const useProjectState = () => {
         }
     };
 
+    const clearProject = () => {
+        setProject({ rods: [], nodes: [] });
+        setErrors([]);
+    };
+
     return {
         project,
         setProject,
@@ -53,5 +58,6 @@ export const useProjectState = () => {
         validateAndCalculate,
         saveToFile,
         loadFromFile,
+        clearProject,
     };
 };

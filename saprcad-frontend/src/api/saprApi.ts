@@ -1,6 +1,6 @@
 // src/api/saprApi.ts
 import axios from 'axios';
-import { StructureInput } from '../types/sapr.types';
+import {FullResult, StructureInput} from '../types/sapr.types';
 
 const API_BASE = 'http://localhost:8081/api/saprcad';
 
@@ -16,4 +16,7 @@ export const saprApi = {
     // Полный расчёт
     calculate: (data: StructureInput) =>
         axios.post<DisplacementVector>(`${API_BASE}/calculate-structure`, data),
+
+    fullCalculation: (data: StructureInput) =>
+        axios.post<FullResult>(`${API_BASE}/full-calculation`, data)
 };

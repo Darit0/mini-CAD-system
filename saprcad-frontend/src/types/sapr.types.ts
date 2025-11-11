@@ -17,3 +17,40 @@ export interface StructureInput {
     rods: Rod[];
     nodes: Node[];
 }
+
+export interface AxialForceCoeffs {
+    a0: number;
+    a1: number;
+    a2: null; // всегда null для линейного N(x)
+}
+
+export interface DisplacementCoeffs {
+    a0: number;
+    a1: number;
+    a2: number;
+}
+
+export interface StressCoeffs {
+    a0: number;
+    a1: number;
+    a2: null;
+}
+
+export interface RodResult {
+    rodId: number;
+    length: number;
+    area: number;
+    elasticModulus: number;
+    allowableStress: number;
+    distributedLoad: number;
+    nodeRelatedTo: Node[];
+    axialForceCoeffs: AxialForceCoeffs;
+    displacementCoeffs: DisplacementCoeffs;
+    stressCoeffs: StressCoeffs;
+    maxStressOnTheRod: number;
+}
+
+export interface FullResult {
+    displacements: number[];
+    resultOutput: RodResult[];
+}
