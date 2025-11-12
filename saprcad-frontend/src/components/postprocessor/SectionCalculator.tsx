@@ -1,22 +1,30 @@
 // src/components/postprocessor/SectionCalculator.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RodResult } from '../../types/sapr.types';
+
+interface SectionCalcResult {
+    id: string;
+    rodId: number;
+    x: number;
+    N: number;
+    sigma: number;
+    u: number;
+    timestamp: Date;
+}
 
 interface SectionCalculatorProps {
     rods: RodResult[];
-    onCalculate?: (result: {
-        rodId: number;
-        x: number;
-        N: number;
-        sigma: number;
-        u: number;
-    }) => void;
+    onHistoryChange?: (history: SectionCalcResult[]) => void;
 }
 
-const SectionCalculator: React.FC<SectionCalculatorProps> = ({ rods, onCalculate }) => {
+const SectionCalculator: React.FC<SectionCalculatorProps> = ({ rods, onHistoryChange }) => {
     const [selectedRodId, setSelectedRodId] = useState(rods[0]?.rodId ?? 0);
     const [x, setX] = useState(0);
-    const [result, setResult] = useState<{ N: number; sigma: number; u: number } | null>(null);
+    const [history, setHistory] = useState<SectionCalcResult[]>(() => {
+        // Восстанавливаем из localStorage (оставить ли)
+        const saved = localStorage.getItem('sapr_section_history');
+        return saved ? JSON.parse(saved) : [];
+    });
 
     const rod = rods.find(r => r.rodId === selectedRodId);
 
@@ -29,33 +37,57 @@ const SectionCalculator: React.FC<SectionCalculatorProps> = ({ rods, onCalculate
 
         const N = rod.axialForceCoeffs.a0 + rod.axialForceCoeffs.a1 * x;
         const sigma = rod.stressCoeffs.a0 + rod.stressCoeffs.a1 * x;
-        const u =
-            rod.displacementCoeffs.a0 +
-            rod.displacementCoeffs.a1 * x +
-            rod.displacementCoeffs.a2 * x * x;
+        const u = rod.displacementCoeffs.a0 + rod.displacementCoeffs.a1 * x + rod.displacementCoeffs.a2 * x * x;
 
-        const calcResult = { N, sigma, u };
-        setResult(calcResult);
-
-        // Передаём результат вверх (для отчёта)
-        onCalculate?.({
-            rodId: rod.rodId,
+        const newCalc: SectionCalcResult = {
+            id: Date.now().toString(),
+            rodId: selectedRodId,
             x,
-            ...calcResult,
-        });
+            N,
+            sigma,
+            u,
+            timestamp: new Date(),
+        };
 
-        // Проверка прочности
-        if (Math.abs(sigma) > rod.allowableStress) {
-            alert(` Вы почти у цели, но пока так: |σ| = ${Math.abs(sigma).toFixed(2)} > [σ] = ${rod.allowableStress}`);
-        }
+        const updated = [newCalc, ...history];
+        setHistory(updated);
+        // Передаём обновлённую историю вверх (для отчёта)
+        onHistoryChange?.(updated);
     };
+
+    const removeItem = (id: string) => {
+        const updated = history.filter(item => item.id !== id);
+        setHistory(updated);
+        onHistoryChange?.(updated);
+    };
+
+    const clearAll = () => {
+        setHistory([]);
+        onHistoryChange?.([]);
+    };
+
+    // Сохраняем в localStorage (пока опционально)
+    useEffect(() => {
+        localStorage.setItem('sapr_section_history', JSON.stringify(history));
+    }, [history]);
 
     return (
         <section style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#f9f9f9', borderRadius: '6px' }}>
-            <h3>Калькулятор сечения</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ margin: 0 }}>Калькулятор сечения</h3>
+                {history.length > 0 && (
+                    <button
+                        onClick={clearAll}
+                        style={{ padding: '4px 8px', fontSize: '0.85em', color: '#e53935', background: 'none', border: 'none' }}
+                    >
+                        Очистить историю ({history.length})
+                    </button>
+                )}
+            </div>
+
             <p>Получите N(x), σ(x), u(x) в любом сечении стержня.</p>
 
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1rem' }}>
                 <label>
                     Стержень:
                     <select value={selectedRodId} onChange={e => setSelectedRodId(Number(e.target.value))}>
@@ -80,31 +112,47 @@ const SectionCalculator: React.FC<SectionCalculatorProps> = ({ rods, onCalculate
                 </label>
 
                 <button onClick={calculate} style={{ padding: '6px 12px' }}>
-                    Рассчитать
+                    Рассчитать и добавить в историю
                 </button>
             </div>
 
-            {result && rod && (
-                <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                    <div style={{ textAlign: 'center', padding: '0.5rem', backgroundColor: '#e3f2fd' }}>
-                        <strong>N(x)</strong><br />
-                        {result.N.toFixed(4)} Н
-                    </div>
-                    <div
-                        style={{
-                            textAlign: 'center',
-                            padding: '0.5rem',
-                            backgroundColor:
-                                Math.abs(result.sigma) > rod.allowableStress ? '#ffcdd2' : '#e8f5e9',
-                        }}
-                    >
-                        <strong>σ(x)</strong><br />
-                        {result.sigma.toFixed(4)} Па
-                        {Math.abs(result.sigma) > rod.allowableStress}
-                    </div>
-                    <div style={{ textAlign: 'center', padding: '0.5rem', backgroundColor: '#fff3e0' }}>
-                        <strong>u(x)</strong><br />
-                        {result.u.toFixed(6)} м
+            {/* История расчётов */}
+            {history.length > 0 && (
+                <div style={{ marginTop: '1rem' }}>
+                    <h4 style={{ margin: '0.5rem 0' }}>История расчётов ({history.length})</h4>
+                    <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '4px' }}>
+                        {history.map(item => {
+                            const foundRod = rods.find(r => r.rodId === item.rodId);
+                            const allowableStress = foundRod?.allowableStress;
+                            const safe = allowableStress !== undefined ? Math.abs(item.sigma) <= allowableStress : true;
+
+                            return (
+                                <div key={item.id} style={{
+                                    padding: '8px',
+                                    borderBottom: '1px solid #f0f0f0',
+                                    display: 'grid',
+                                    gridTemplateColumns: '1fr auto',
+                                    gap: '10px',
+                                    alignItems: 'center',
+                                }}>
+                                    <div>
+                                        <strong>Стержень {item.rodId}, x = {item.x.toFixed(3)} м</strong>
+                                        <div style={{ fontSize: '0.9em', color: '#555' }}>
+                                            N = {item.N.toExponential(3)} Н,
+                                            σ = {item.sigma.toExponential(3)} Па,
+                                            u = {item.u.toExponential(4)} м
+                                            {!safe}
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => removeItem(item.id)}
+                                        style={{ padding: '2px 6px', fontSize: '0.8em', color: '#e53935', background: 'none', border: 'none' }}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}

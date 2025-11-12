@@ -1,11 +1,21 @@
 // src/components/postprocessor/ExportHtmlModal.tsx
 import React, { useState } from 'react';
 
+interface SectionCalcResult {
+    id: string;
+    rodId: number;
+    x: number;
+    N: number;
+    sigma: number;
+    u: number;
+    timestamp: Date;
+}
+
 interface ExportHtmlModalProps {
     rods: any[];
     displacements: number[];
-    lastSectionCalc?: Record<string, any>;
-    selectedBlocks?: {  // Делаем опциональным
+    sectionCalcHistory?: SectionCalcResult[];
+    selectedBlocks?: {
         construction: boolean;
         table: boolean;
         epureN: boolean;
@@ -17,15 +27,13 @@ interface ExportHtmlModalProps {
     onClose: () => void;
 }
 
-// И в самом компоненте используем переданный selectedBlocks или создаем по умолчанию
 const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
                                                              rods,
                                                              displacements,
-                                                             lastSectionCalc,
+                                                             sectionCalcHistory = [],
                                                              selectedBlocks: externalSelectedBlocks,
                                                              onClose,
                                                          }) => {
-
     const [selected, setSelected] = useState(externalSelectedBlocks || {
         construction: true,
         table: true,
@@ -33,7 +41,7 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
         epureSigma: true,
         epureU: true,
         displacements: true,
-        sectionCalc: !!lastSectionCalc,
+        sectionCalc: sectionCalcHistory.length > 0,
     });
 
     const [isGenerating, setIsGenerating] = useState(false);
@@ -46,7 +54,7 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
         setIsGenerating(true);
 
         try {
-            //  1. Получаем SVG-строки из DOM
+            // 1. Получаем SVG-строки из DOM
             const getSvgString = (selectorOrId: string): string => {
                 let svgElement: SVGElement | null = null;
 
@@ -97,6 +105,8 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
     .danger { background: #ffcdd2; color: #c62828; }
     .neutral { background: #fff3e0; }
     .epure-svg { margin: 20px 0; border: 1px solid #eee; border-radius: 4px; overflow: hidden; }
+    .history-table { width: 100%; margin: 20px 0; }
+    .history-table th { background-color: #795548; }
     footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #777; font-size: 0.9em; }
   </style>
 </head>
@@ -191,24 +201,38 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
   </section>
   ` : ''}
 
-  ${selected.sectionCalc && lastSectionCalc ? `
+  ${selected.sectionCalc && sectionCalcHistory.length > 0 ? `
   <section>
-    <h3>Расчёт в сечении</h3>
-    <div class="result-grid">
-      <div class="result-item neutral">
-        <h4>N(x)</h4>
-        <p>${lastSectionCalc.N.toExponential(4)} Н</p>
-      </div>
-      <div class="result-item ${Math.abs(lastSectionCalc.sigma) > rods.find((r: any) => r.rodId === lastSectionCalc.rodId)?.allowableStress ? 'danger' : 'safe'}">
-        <h4>σ(x)</h4>
-        <p>${lastSectionCalc.sigma.toExponential(4)} Па</p>
-      </div>
-      <div class="result-item neutral">
-        <h4>u(x)</h4>
-        <p>${lastSectionCalc.u.toExponential(6)} м</p>
-      </div>
-    </div>
-    <p><em>Стержень ${lastSectionCalc.rodId}, x = ${lastSectionCalc.x.toFixed(3)} м</em></p>
+    <h3>История расчётов в сечениях</h3>
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th>Стержень</th>
+          <th>x, м</th>
+          <th>N(x), Н</th>
+          <th>σ(x), Па</th>
+          <th>u(x), м</th>
+          <th>Прочность</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sectionCalcHistory.map(item => {
+                const rod = rods.find(r => r.rodId === item.rodId);
+                const safe = rod ? Math.abs(item.sigma) <= rod.allowableStress : true;
+                return `
+            <tr>
+              <td>${item.rodId}</td>
+              <td>${item.x.toFixed(3)}</td>
+              <td>${item.N.toExponential(4)}</td>
+              <td>${item.sigma.toExponential(4)}</td>
+              <td>${item.u.toExponential(6)}</td>
+              <td style="color: ${safe ? '#2e7d32' : '#e53935'}">${safe ? '✓' : '✗'}</td>
+            </tr>
+          `;
+            }).join('')}
+      </tbody>
+    </table>
+    <p><em>Всего расчётов: ${sectionCalcHistory.length}</em></p>
   </section>
   ` : ''}
 
@@ -269,7 +293,7 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
                         { key: 'epureSigma', label: 'Эпюра σ(x)' },
                         { key: 'epureU', label: 'Эпюра u(x)' },
                         { key: 'displacements', label: 'Вектор ∆' },
-                        { key: 'sectionCalc', label: 'Расчёт в сечении', disabled: !lastSectionCalc },
+                        { key: 'sectionCalc', label: 'История расчётов в сечениях', disabled: sectionCalcHistory.length === 0 },
                     ].map(({ key, label, disabled }) => (
                         <React.Fragment key={key}>
                             <label style={{ opacity: disabled ? 0.5 : 1 }}>
@@ -308,7 +332,7 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
 
                 <p style={{ fontSize: '0.85em', color: '#666', marginTop: '1rem' }}>
                     Вы можете выбрать только нужные блоки.<br />
-                    Отчёт сохраняется в один HTML-файл с SVG-графиками и кириллицей.
+                    Отчёт сохраняется в один HTML-файл с SVG-графиками.
                 </p>
             </div>
         </div>

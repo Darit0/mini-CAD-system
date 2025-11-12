@@ -15,6 +15,16 @@ interface LocationState {
     displacements?: number[];
 }
 
+interface SectionCalcResult {
+    id: string;
+    rodId: number;
+    x: number;
+    N: number;
+    sigma: number;
+    u: number;
+    timestamp: Date;
+}
+
 const PostprocessorPage: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -22,12 +32,12 @@ const PostprocessorPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showHtmlModal, setShowHtmlModal] = useState(false);
-    const [lastSectionCalc, setLastSectionCalc] = useState<any>(null);
+    const [sectionCalcHistory, setSectionCalcHistory] = useState<SectionCalcResult[]>([]);
 
     const state = location.state as LocationState | null;
 
-    const handleSectionCalc = (data: any) => {
-        setLastSectionCalc(data);
+    const handleSectionCalcHistoryChange = (history: SectionCalcResult[]) => {
+        setSectionCalcHistory(history);
     };
 
     useEffect(() => {
@@ -85,7 +95,7 @@ const PostprocessorPage: React.FC = () => {
         epureSigma: true,
         epureU: true,
         displacements: true,
-        sectionCalc: !!lastSectionCalc,
+        sectionCalc: sectionCalcHistory.length > 0,
     };
 
     return (
@@ -149,7 +159,7 @@ const PostprocessorPage: React.FC = () => {
 
             <ResultTable result={result} />
 
-            <SectionCalculator rods={result.resultOutput} onCalculate={handleSectionCalc} />
+            <SectionCalculator rods={result.resultOutput} onHistoryChange={handleSectionCalcHistoryChange} />
 
             <div style={{ marginTop: '3rem' }}>
                 <h3>Эпюры вдоль конструкции</h3>
@@ -194,7 +204,7 @@ const PostprocessorPage: React.FC = () => {
                 <ExportHtmlModal
                     rods={result.resultOutput}
                     displacements={result.displacements}
-                    lastSectionCalc={lastSectionCalc}
+                    sectionCalcHistory={sectionCalcHistory}
                     selectedBlocks={selectedBlocks}
                     onClose={() => setShowHtmlModal(false)}
                 />
