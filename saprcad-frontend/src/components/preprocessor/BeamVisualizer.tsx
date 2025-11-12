@@ -321,7 +321,7 @@ const BeamVisualizer: React.FC<BeamVisualizerProps> = ({ project }) => {
 
                     return (
                         <g key={node.id}>
-                            {/* Опора (заделка) - ВСЕ штрихи под одинаковым углом 45 градусов ВПРАВО */}
+                            {/* Опора (заделка) - штрихи под одинаковым углом 45 градусов  */}
                             {node.fixed && (
                                 <>
                                     <line
@@ -333,7 +333,7 @@ const BeamVisualizer: React.FC<BeamVisualizerProps> = ({ project }) => {
                                         strokeWidth="3"
                                     />
                                     {[...Array(6)].map((_, idx) => {
-                                        // ВСЕГДА одинаковый угол 45 градусов ВПРАВО (dx = 8, dy = 4)
+
                                         const dx = 8;
                                         const dy = 4;
 

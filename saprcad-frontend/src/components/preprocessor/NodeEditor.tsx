@@ -3,7 +3,7 @@ import { Node } from '../../types/sapr.types';
 
 interface NodeEditorProps {
     nodes: Node[];
-    rods: any[]; // Добавляем rods для проверки
+    rods: any[];
     onChange: (nodes: Node[]) => void;
 }
 
@@ -44,7 +44,7 @@ const NodeEditor: React.FC<NodeEditorProps> = ({ nodes, rods, onChange }) => {
             }
             updated[index][field] = boolValue;
         } else if (field === 'externalForce') {
-            // Разрешаем ввод отрицательных значений и пустую строку
+
             if (value === '') {
                 updated[index][field] = 0;
             } else if (value === '-' || value === '-.') {
