@@ -1,5 +1,5 @@
 // src/components/postprocessor/SectionCalculator.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { RodResult } from '../../types/sapr.types';
 
 interface SectionCalcResult {
@@ -21,12 +21,20 @@ const SectionCalculator: React.FC<SectionCalculatorProps> = ({ rods, onHistoryCh
     const [selectedRodId, setSelectedRodId] = useState(rods[0]?.rodId ?? 0);
     const [x, setX] = useState(0);
     const [history, setHistory] = useState<SectionCalcResult[]>(() => {
-        // Восстанавливаем из localStorage (оставить ли)
         const saved = localStorage.getItem('sapr_section_history');
         return saved ? JSON.parse(saved) : [];
     });
 
     const rod = rods.find(r => r.rodId === selectedRodId);
+
+    // Стабильный ключ для отслеживания изменения стержней
+    const rodsKey = useMemo(() => rods.map(r => r.rodId).join(','), [rods]);
+
+    useEffect(() => {
+        // Очищаем историю только при смене конструкции
+        setHistory([]);
+        onHistoryChange?.([]);
+    }, [rodsKey, onHistoryChange]);
 
     const calculate = () => {
         if (!rod) return;
@@ -37,7 +45,9 @@ const SectionCalculator: React.FC<SectionCalculatorProps> = ({ rods, onHistoryCh
 
         const N = rod.axialForceCoeffs.a0 + rod.axialForceCoeffs.a1 * x;
         const sigma = rod.stressCoeffs.a0 + rod.stressCoeffs.a1 * x;
-        const u = rod.displacementCoeffs.a0 + rod.displacementCoeffs.a1 * x + rod.displacementCoeffs.a2 * x * x;
+        const u = rod.displacementCoeffs.a0 +
+            rod.displacementCoeffs.a1 * x +
+            rod.displacementCoeffs.a2 * x * x;
 
         const newCalc: SectionCalcResult = {
             id: Date.now().toString(),
@@ -51,25 +61,22 @@ const SectionCalculator: React.FC<SectionCalculatorProps> = ({ rods, onHistoryCh
 
         const updated = [newCalc, ...history];
         setHistory(updated);
-        // Передаём обновлённую историю вверх (для отчёта)
         onHistoryChange?.(updated);
+        localStorage.setItem('sapr_section_history', JSON.stringify(updated));
     };
 
     const removeItem = (id: string) => {
         const updated = history.filter(item => item.id !== id);
         setHistory(updated);
         onHistoryChange?.(updated);
+        localStorage.setItem('sapr_section_history', JSON.stringify(updated));
     };
 
     const clearAll = () => {
         setHistory([]);
         onHistoryChange?.([]);
+        localStorage.removeItem('sapr_section_history');
     };
-
-    // Сохраняем в localStorage (пока опционально)
-    useEffect(() => {
-        localStorage.setItem('sapr_section_history', JSON.stringify(history));
-    }, [history]);
 
     return (
         <section style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#f9f9f9', borderRadius: '6px' }}>
@@ -80,7 +87,7 @@ const SectionCalculator: React.FC<SectionCalculatorProps> = ({ rods, onHistoryCh
                         onClick={clearAll}
                         style={{ padding: '4px 8px', fontSize: '0.85em', color: '#e53935', background: 'none', border: 'none' }}
                     >
-                        Очистить историю ({history.length})
+                        🗑 Очистить историю ({history.length})
                     </button>
                 )}
             </div>
@@ -116,16 +123,13 @@ const SectionCalculator: React.FC<SectionCalculatorProps> = ({ rods, onHistoryCh
                 </button>
             </div>
 
-            {/* История расчётов */}
             {history.length > 0 && (
                 <div style={{ marginTop: '1rem' }}>
                     <h4 style={{ margin: '0.5rem 0' }}>История расчётов ({history.length})</h4>
                     <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '4px' }}>
                         {history.map(item => {
-                            const foundRod = rods.find(r => r.rodId === item.rodId);
-                            const allowableStress = foundRod?.allowableStress;
-                            const safe = allowableStress !== undefined ? Math.abs(item.sigma) <= allowableStress : true;
-
+                            const rod = rods.find(r => r.rodId === item.rodId);
+                            const safe = rod ? Math.abs(item.sigma) <= rod.allowableStress : true;
                             return (
                                 <div key={item.id} style={{
                                     padding: '8px',

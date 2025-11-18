@@ -11,19 +11,20 @@ interface SectionCalcResult {
     timestamp: Date;
 }
 
+interface UniformStepRow {
+    rodId: number;
+    x: number;
+    N: number;
+    sigma: number;
+    u: number;
+    isBoundary: boolean;
+}
+
 interface ExportHtmlModalProps {
     rods: any[];
     displacements: number[];
     sectionCalcHistory?: SectionCalcResult[];
-    selectedBlocks?: {
-        construction: boolean;
-        table: boolean;
-        epureN: boolean;
-        epureSigma: boolean;
-        epureU: boolean;
-        displacements: boolean;
-        sectionCalc: boolean;
-    };
+    uniformStepData?: UniformStepRow[];
     onClose: () => void;
 }
 
@@ -31,10 +32,10 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
                                                              rods,
                                                              displacements,
                                                              sectionCalcHistory = [],
-                                                             selectedBlocks: externalSelectedBlocks,
+                                                             uniformStepData = [],
                                                              onClose,
                                                          }) => {
-    const [selected, setSelected] = useState(externalSelectedBlocks || {
+    const [selected, setSelected] = useState({
         construction: true,
         table: true,
         epureN: true,
@@ -42,6 +43,7 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
         epureU: true,
         displacements: true,
         sectionCalc: sectionCalcHistory.length > 0,
+        uniformStep: uniformStepData.length > 0,
     });
 
     const [isGenerating, setIsGenerating] = useState(false);
@@ -54,24 +56,30 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
         setIsGenerating(true);
 
         try {
-            // 1. Получаем SVG-строки из DOM
             const getSvgString = (selectorOrId: string): string => {
-                let svgElement: SVGElement | null = null;
+                let el: Element | null = null;
 
                 if (selectorOrId.startsWith('#')) {
-                    svgElement = document.querySelector(selectorOrId);
+                    // Поиск по ID
+                    el = document.querySelector(selectorOrId);
                 } else {
-                    // По заголовку h4 → ищем SVG в том же grid-столбце
-                    const h4 = Array.from(document.querySelectorAll('h4')).find(el =>
+                    // Поиск по заголовку
+                    const h4Elements = Array.from(document.querySelectorAll('h4'));
+                    const targetH4 = h4Elements.find(el =>
                         el.textContent?.includes(selectorOrId)
                     );
-                    const container = h4?.closest('div');
-                    if (container) {
-                        svgElement = container.querySelector('svg');
+
+                    if (targetH4) {
+                        // Ищем SVG в родительском контейнере
+                        const container = targetH4.closest('div');
+                        if (container) {
+                            el = container.querySelector('svg');
+                        }
                     }
                 }
 
-                return svgElement ? new XMLSerializer().serializeToString(svgElement) : '';
+                // Явное приведение типа к Element
+                return el ? new XMLSerializer().serializeToString(el as Element) : '';
             };
 
             const constructionSvg = selected.construction ? getSvgString('#construction-svg') : '';
@@ -79,7 +87,6 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
             const epureSigmaSvg = selected.epureSigma ? getSvgString('Напряжения σ(x)') : '';
             const epureUSvg = selected.epureU ? getSvgString('Перемещения u(x)') : '';
 
-            // === 2. Генерируем HTML ===
             const htmlContent = `
 <!DOCTYPE html>
 <html lang="ru">
@@ -99,14 +106,8 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
     table { width: 100%; border-collapse: collapse; margin: 20px 0; }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
     th { background-color: #4a90e2; color: white; }
-    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
-    .result-item { text-align: center; padding: 15px; border-radius: 6px; }
-    .safe { background: #e8f5e9; color: #2e7d32; }
-    .danger { background: #ffcdd2; color: #c62828; }
-    .neutral { background: #fff3e0; }
     .epure-svg { margin: 20px 0; border: 1px solid #eee; border-radius: 4px; overflow: hidden; }
-    .history-table { width: 100%; margin: 20px 0; }
-    .history-table th { background-color: #795548; }
+    .boundary { background-color: #e8f5e9; }
     footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #777; font-size: 0.9em; }
   </style>
 </head>
@@ -203,8 +204,8 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
 
   ${selected.sectionCalc && sectionCalcHistory.length > 0 ? `
   <section>
-    <h3>История расчётов в сечениях</h3>
-    <table class="history-table">
+    <h3>История расчётов в сечениях (${sectionCalcHistory.length})</h3>
+    <table>
       <thead>
         <tr>
           <th>Стержень</th>
@@ -217,7 +218,7 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
       </thead>
       <tbody>
         ${sectionCalcHistory.map(item => {
-                const rod = rods.find(r => r.rodId === item.rodId);
+                const rod = rods.find((r: any) => r.rodId === item.rodId);
                 const safe = rod ? Math.abs(item.sigma) <= rod.allowableStress : true;
                 return `
             <tr>
@@ -232,7 +233,40 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
             }).join('')}
       </tbody>
     </table>
-    <p><em>Всего расчётов: ${sectionCalcHistory.length}</em></p>
+  </section>
+  ` : ''}
+
+  ${selected.uniformStep && uniformStepData.length > 0 ? `
+  <section>
+    <h3>Расчёт по равномерному шагу (${uniformStepData.length} точек)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Стержень</th>
+          <th>x, м</th>
+          <th>N(x), Н</th>
+          <th>σ(x), Па</th>
+          <th>u(x), м</th>
+          <th>Граница</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${uniformStepData.map(row => `
+          <tr ${row.isBoundary ? 'class="boundary"' : ''}>
+            <td>${row.rodId}</td>
+            <td>${row.x.toFixed(4)}</td>
+            <td>${row.N.toExponential(3)}</td>
+            <td>${row.sigma.toExponential(3)}</td>
+            <td>${row.u.toExponential(5)}</td>
+            <td>${row.isBoundary ? '✓' : ''}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    <p style="font-size: 0.9em; color: #666;">
+      Подсвечены сечения на границах стержней (x = 0 и x = L<sub>i</sub>). 
+      Расчёт для каждого стержня начинается с x = 0.
+    </p>
   </section>
   ` : ''}
 
@@ -243,7 +277,6 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
 </html>
 `;
 
-            // === 3. Скачиваем ===
             const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -293,7 +326,8 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
                         { key: 'epureSigma', label: 'Эпюра σ(x)' },
                         { key: 'epureU', label: 'Эпюра u(x)' },
                         { key: 'displacements', label: 'Вектор ∆' },
-                        { key: 'sectionCalc', label: 'История расчётов в сечениях', disabled: sectionCalcHistory.length === 0 },
+                        { key: 'sectionCalc', label: `История сечений (${sectionCalcHistory.length})`, disabled: sectionCalcHistory.length === 0 },
+                        { key: 'uniformStep', label: `Шаговая таблица (${uniformStepData.length})`, disabled: uniformStepData.length === 0 },
                     ].map(({ key, label, disabled }) => (
                         <React.Fragment key={key}>
                             <label style={{ opacity: disabled ? 0.5 : 1 }}>
@@ -331,8 +365,7 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
                 </div>
 
                 <p style={{ fontSize: '0.85em', color: '#666', marginTop: '1rem' }}>
-                    Вы можете выбрать только нужные блоки.<br />
-                    Отчёт сохраняется в один HTML-файл с SVG-графиками.
+                    HTML —  с SVG и кириллицей<br />
                 </p>
             </div>
         </div>

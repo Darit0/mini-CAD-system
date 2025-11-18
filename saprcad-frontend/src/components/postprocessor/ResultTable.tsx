@@ -23,7 +23,7 @@ const ResultTable: React.FC<ResultTableProps> = ({ result }) => {
                         <th style={{ padding: '10px', textAlign: 'center' }}>L, м</th>
                         <th style={{ padding: '10px', textAlign: 'center' }}>A, м²</th>
                         <th style={{ padding: '10px', textAlign: 'center' }}>[σ], Па</th>
-                        <th style={{ padding: '10px', textAlign: 'center' }}>max\|σ\|, Па</th>
+                        <th style={{ padding: '10px', textAlign: 'center' }}>max|σ|, Па</th>
                         <th style={{ padding: '10px', textAlign: 'center' }}>Прочность</th>
                         <th style={{ padding: '10px', textAlign: 'center' }}>N₀, Н</th>
                         <th style={{ padding: '10px', textAlign: 'center' }}>Nₗ, Н</th>
@@ -37,11 +37,11 @@ const ResultTable: React.FC<ResultTableProps> = ({ result }) => {
                         return (
                             <tr key={rod.rodId} style={{ borderBottom: '1px solid #eee' }}>
                                 <td style={{ padding: '8px', textAlign: 'center' }}>{rod.rodId}</td>
-                                <td style={{ padding: '8px', textAlign: 'center' }}>{rod.length.toFixed(3)}</td>
-                                <td style={{ padding: '8px', textAlign: 'center' }}>{rod.area.toExponential(2)}</td>
-                                <td style={{ padding: '8px', textAlign: 'center' }}>{rod.allowableStress.toExponential(2)}</td>
+                                <td style={{ padding: '8px', textAlign: 'center' }}>{rod.length.toFixed(4)}</td>
+                                <td style={{ padding: '8px', textAlign: 'center' }}>{rod.area.toFixed(4)}</td>
+                                <td style={{ padding: '8px', textAlign: 'center' }}>{rod.allowableStress.toFixed(4)}</td>
                                 <td style={{ padding: '8px', textAlign: 'center', color: isSafe ? 'green' : 'red' }}>
-                                    {rod.maxStressOnTheRod.toExponential(2)}
+                                    {rod.maxStressOnTheRod.toFixed(4)}
                                 </td>
                                 <td style={{ padding: '8px', textAlign: 'center' }}>
                     <span
@@ -58,10 +58,10 @@ const ResultTable: React.FC<ResultTableProps> = ({ result }) => {
                     </span>
                                 </td>
                                 <td style={{ padding: '8px', textAlign: 'center', fontFamily: 'monospace' }}>
-                                    {N0.toFixed(1)}
+                                    {N0.toFixed(4)}
                                 </td>
                                 <td style={{ padding: '8px', textAlign: 'center', fontFamily: 'monospace' }}>
-                                    {Nl.toFixed(1)}
+                                    {Nl.toFixed(4)}
                                 </td>
                             </tr>
                         );
