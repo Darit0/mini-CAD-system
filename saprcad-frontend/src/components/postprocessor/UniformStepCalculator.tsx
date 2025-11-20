@@ -98,7 +98,7 @@ const UniformStepCalculator = forwardRef<UniformStepHandle, Props>(({ rods }, re
                     }}
                     style={{ padding: '4px 10px', fontSize: '0.9em' }}
                 >
-                    📥 Экспорт в CSV
+                    Экспорт в CSV
                 </button>
             </div>
 
