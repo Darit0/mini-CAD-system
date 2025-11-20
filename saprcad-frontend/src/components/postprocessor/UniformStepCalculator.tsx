@@ -121,7 +121,7 @@ const UniformStepCalculator = forwardRef<UniformStepHandle, Props>(({ rods }, re
                                 <td style={{ padding: '4px', textAlign: 'center' }}>{row.x.toFixed(4)}</td>
                                 <td style={{ padding: '4px', textAlign: 'center', fontFamily: 'monospace' }}>{row.N.toExponential(3)}</td>
                                 <td style={{ padding: '4px', textAlign: 'center', fontFamily: 'monospace' }}>{row.sigma.toExponential(3)}</td>
-                                <td style={{ padding: '4px', textAlign: 'center', fontFamily: 'monospace' }}>{row.u.toExponential(5)}</td>
+                                <td style={{ padding: '4px', textAlign: 'center', fontFamily: 'monospace' }}>{row.u.toExponential(3)}</td>
                             </tr>
                         ))}
                         </tbody>

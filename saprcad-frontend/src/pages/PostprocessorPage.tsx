@@ -113,7 +113,7 @@ const PostprocessorPage: React.FC = () => {
     return (
         <div style={{ padding: '1.5rem', fontFamily: 'Arial, sans-serif', maxWidth: '1400px', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h2>Постпроцессор: анализ НДС</h2>
+                <h2>Постпроцессор: анализ </h2>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
                     <button
                         onClick={handleExportClick}
