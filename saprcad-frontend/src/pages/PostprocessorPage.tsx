@@ -1,12 +1,12 @@
 // src/pages/PostprocessorPage.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { StructureInput, FullResult } from '../types/sapr.types';
+import { StructureInput, FullResult, RodResult } from '../types/sapr.types';
 import { saprApi } from '../api/saprApi';
 import ResultTable from '../components/postprocessor/ResultTable';
 import ConstructionWithEpures from '../components/postprocessor/ConstructionWithEpures';
-import SectionCalculator from '../components/postprocessor/SectionCalculator';
-import UniformStepCalculator from '../components/postprocessor/UniformStepCalculator';
+import SectionCalculator, { SectionCalcResult, SectionCalculatorHandle } from '../components/postprocessor/SectionCalculator';
+import UniformStepCalculator, { UniformStepRow, UniformStepHandle } from '../components/postprocessor/UniformStepCalculator';
 import EpurePlot from '../components/postprocessor/EpurePlot';
 import ExportHtmlModal from '../components/postprocessor/ExportHtmlModal';
 
@@ -15,14 +15,10 @@ interface LocationState {
     displacements?: number[];
 }
 
-interface SectionCalcResult {
-    id: string;
-    rodId: number;
-    x: number;
-    N: number;
-    sigma: number;
-    u: number;
-    timestamp: Date;
+interface HtmlModalState {
+    open: boolean;
+    history: SectionCalcResult[];
+    stepData: UniformStepRow[];
 }
 
 const PostprocessorPage: React.FC = () => {
@@ -31,60 +27,42 @@ const PostprocessorPage: React.FC = () => {
     const [result, setResult] = useState<FullResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [showHtmlModal, setShowHtmlModal] = useState(false);
-    const [sectionCalcHistory, setSectionCalcHistory] = useState<SectionCalcResult[]>([]);
-    const [uniformStepData, setUniformStepData] = useState<any[]>([]);
+    const [showHtmlModal, setShowHtmlModal] = useState<HtmlModalState>({
+        open: false,
+        history: [],
+        stepData: []
+    });
+
+    // ref-ы для получения данных
+    const sectionCalcRef = useRef<SectionCalculatorHandle>(null);
+    const uniformStepRef = useRef<UniformStepHandle>(null);
 
     const state = location.state as LocationState | null;
 
-    const handleHistoryChange = (history: SectionCalcResult[]) => {
-        setSectionCalcHistory(history);
-    };
-
-    const handleUniformStepChange = (data: any[]) => {
-        setUniformStepData(data);
-    };
-
     useEffect(() => {
-        let isMounted = true; // Флаг для отслеживания mounted состояния
-
         const fetchData = async () => {
             if (!state?.project) {
-                if (isMounted) {
-                    alert('Нет данных для расчёта');
-                    navigate('/preprocessor');
-                }
+                alert('Нет данных для расчёта');
+                navigate('/preprocessor');
                 return;
             }
 
             try {
                 const res = await saprApi.fullCalculation(state.project);
-                if (isMounted) {
-                    setResult(res.data);
-                    setSectionCalcHistory([]);
-                    setUniformStepData([]);
-                }
+                setResult(res.data);
             } catch (err: any) {
-                if (isMounted) {
-                    const msg = err.response?.data?.message
-                        || err.response?.data?.error
-                        || err.response?.statusText
-                        || err.message
-                        || 'Неизвестная ошибка';
-                    setError(`Ошибка расчёта: ${msg}`);
-                }
+                const msg = err.response?.data?.message
+                    || err.response?.data?.error
+                    || err.response?.statusText
+                    || err.message
+                    || 'Неизвестная ошибка';
+                setError(`Ошибка расчёта: ${msg}`);
             } finally {
-                if (isMounted) {
-                    setLoading(false);
-                }
+                setLoading(false);
             }
         };
 
         fetchData();
-
-        return () => {
-            isMounted = false; // Очистка при размонтировании
-        };
     }, [state, navigate]);
 
     if (loading) {
@@ -113,16 +91,24 @@ const PostprocessorPage: React.FC = () => {
         );
     }
 
-    if (!result) {
-        return (
-            <div style={{ padding: '2rem', textAlign: 'center' }}>
-                <h2>Нет данных для отображения</h2>
-                <button onClick={() => navigate('/preprocessor')}>
-                    ← Вернуться в препроцессор
-                </button>
-            </div>
-        );
-    }
+    if (!result) return null;
+
+    const handleExportClick = () => {
+        const history = sectionCalcRef.current?.getHistory() || [];
+        const stepData = uniformStepRef.current?.getStepData() || [];
+        setShowHtmlModal({
+            open: true,
+            history,
+            stepData
+        });
+    };
+
+    const handleCloseModal = () => {
+        setShowHtmlModal(prev => ({
+            ...prev,
+            open: false
+        }));
+    };
 
     return (
         <div style={{ padding: '1.5rem', fontFamily: 'Arial, sans-serif', maxWidth: '1400px', margin: '0 auto' }}>
@@ -130,8 +116,7 @@ const PostprocessorPage: React.FC = () => {
                 <h2>Постпроцессор: анализ НДС</h2>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
                     <button
-                        onClick={() => setShowHtmlModal(true)}
-                        title="Сформировать HTML-отчёт со всеми графиками, таблицами и расчётами"
+                        onClick={handleExportClick}
                         style={{
                             padding: '8px 16px',
                             backgroundColor: '#2e7d32',
@@ -186,13 +171,13 @@ const PostprocessorPage: React.FC = () => {
             <ResultTable result={result} />
 
             <SectionCalculator
+                ref={sectionCalcRef}
                 rods={result.resultOutput}
-                onHistoryChange={handleHistoryChange}
             />
 
             <UniformStepCalculator
+                ref={uniformStepRef}
                 rods={result.resultOutput}
-                onStepDataChange={handleUniformStepChange}
             />
 
             <div style={{ marginTop: '3rem' }}>
@@ -234,13 +219,13 @@ const PostprocessorPage: React.FC = () => {
                 </div>
             </div>
 
-            {showHtmlModal && (
+            {showHtmlModal.open && (
                 <ExportHtmlModal
                     rods={result.resultOutput}
                     displacements={result.displacements}
-                    sectionCalcHistory={sectionCalcHistory}
-                    uniformStepData={uniformStepData}
-                    onClose={() => setShowHtmlModal(false)}
+                    sectionCalcHistory={showHtmlModal.history}
+                    uniformStepData={showHtmlModal.stepData}
+                    onClose={handleCloseModal}
                 />
             )}
 
@@ -257,7 +242,7 @@ const PostprocessorPage: React.FC = () => {
                         cursor: 'pointer',
                     }}
                 >
-                    ← Вернуться в препроцессор для редактирования
+                    Вернуться в препроцессор для редактирования
                 </button>
             </div>
         </div>

@@ -1,8 +1,8 @@
 // src/components/postprocessor/SectionCalculator.tsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle } from 'react';
 import { RodResult } from '../../types/sapr.types';
 
-interface SectionCalcResult {
+export interface SectionCalcResult {
     id: string;
     rodId: number;
     x: number;
@@ -12,12 +12,16 @@ interface SectionCalcResult {
     timestamp: Date;
 }
 
-interface SectionCalculatorProps {
-    rods: RodResult[];
-    onHistoryChange?: (history: SectionCalcResult[]) => void;
+export interface SectionCalculatorHandle {
+    getHistory: () => SectionCalcResult[];
+    clearHistory: () => void;
 }
 
-const SectionCalculator: React.FC<SectionCalculatorProps> = ({ rods, onHistoryChange }) => {
+interface SectionCalculatorProps {
+    rods: RodResult[];
+}
+
+const SectionCalculator = forwardRef<SectionCalculatorHandle, SectionCalculatorProps>(({ rods }, ref) => {
     const [selectedRodId, setSelectedRodId] = useState(rods[0]?.rodId ?? 0);
     const [x, setX] = useState(0);
     const [history, setHistory] = useState<SectionCalcResult[]>(() => {
@@ -26,15 +30,18 @@ const SectionCalculator: React.FC<SectionCalculatorProps> = ({ rods, onHistoryCh
     });
 
     const rod = rods.find(r => r.rodId === selectedRodId);
-
-    // Стабильный ключ для отслеживания изменения стержней
+    const isFirstRender = useRef(true);
     const rodsKey = useMemo(() => rods.map(r => r.rodId).join(','), [rods]);
 
+    // Очищаем историю ТОЛЬКО при смене конструкции (но не при первом рендере)
     useEffect(() => {
-        // Очищаем историю только при смене конструкции
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
         setHistory([]);
-        onHistoryChange?.([]);
-    }, [rodsKey, onHistoryChange]);
+        localStorage.removeItem('sapr_section_history');
+    }, [rodsKey]);
 
     const calculate = () => {
         if (!rod) return;
@@ -61,22 +68,25 @@ const SectionCalculator: React.FC<SectionCalculatorProps> = ({ rods, onHistoryCh
 
         const updated = [newCalc, ...history];
         setHistory(updated);
-        onHistoryChange?.(updated);
         localStorage.setItem('sapr_section_history', JSON.stringify(updated));
     };
 
     const removeItem = (id: string) => {
         const updated = history.filter(item => item.id !== id);
         setHistory(updated);
-        onHistoryChange?.(updated);
         localStorage.setItem('sapr_section_history', JSON.stringify(updated));
     };
 
-    const clearAll = () => {
+    const clearHistory = () => {
         setHistory([]);
-        onHistoryChange?.([]);
         localStorage.removeItem('sapr_section_history');
     };
+
+    // Экспортируем интерфейс для родителя
+    useImperativeHandle(ref, () => ({
+        getHistory: () => history,
+        clearHistory,
+    }), [history]);
 
     return (
         <section style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#f9f9f9', borderRadius: '6px' }}>
@@ -84,10 +94,10 @@ const SectionCalculator: React.FC<SectionCalculatorProps> = ({ rods, onHistoryCh
                 <h3 style={{ margin: 0 }}>Калькулятор сечения</h3>
                 {history.length > 0 && (
                     <button
-                        onClick={clearAll}
+                        onClick={clearHistory}
                         style={{ padding: '4px 8px', fontSize: '0.85em', color: '#e53935', background: 'none', border: 'none' }}
                     >
-                        🗑 Очистить историю ({history.length})
+                        Очистить историю ({history.length})
                     </button>
                 )}
             </div>
@@ -162,6 +172,6 @@ const SectionCalculator: React.FC<SectionCalculatorProps> = ({ rods, onHistoryCh
             )}
         </section>
     );
-};
+});
 
 export default SectionCalculator;

@@ -1,5 +1,5 @@
 // src/pages/PreprocessorPage.tsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useProjectState } from '../hooks/UseProjectState';
 import BeamVisualizer from '../components/preprocessor/BeamVisualizer';
@@ -21,26 +21,38 @@ const PreprocessorPage: React.FC = () => {
         clearProject,
     } = useProjectState();
 
-    // Загрузка project из location.state (при возврате из постпроцессора)
+    const [componentKey, setComponentKey] = useState(0);
+
     useEffect(() => {
-        const state = location.state as { project?: any } | null;
+        const state = location.state as { project?: any; timestamp?: number } | null;
+
+        // Обрабатываем только если есть project
         if (state?.project) {
+            console.log('Загрузка проекта из location.state');
             setProject(state.project);
-            // Ошибки сбрасываем — валидация будет при расчёте
+            setComponentKey(prev => prev + 1);
+            // Опционально: очищаем state из URL через replace
+            // Но делаем это АСИНХРОННО, чтобы не мешать рендеру
+            setTimeout(() => {
+                if (window.history.state && window.history.state.usr?.state) {
+                    navigate('.', { replace: true });
+                }
+            }, 0);
         }
     }, [location.state, setProject]);
 
     const handleCalculate = async () => {
         const result = await validateAndCalculate();
         if (result.success && result.displacements) {
-            navigate('/calculation-success', {
+            navigate('/postprocessor', {
                 state: { project, displacements: result.displacements },
+                replace: true
             });
         }
     };
 
     return (
-        <div style={{ padding: '1.5rem', fontFamily: 'Arial, sans-serif', maxWidth: '1400px', margin: '0 auto' }}>
+        <div key={componentKey} style={{ padding: '1.5rem', fontFamily: 'Arial, sans-serif', maxWidth: '1400px', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h2>Препроцессор: ввод данных и визуализация</h2>
                 <button

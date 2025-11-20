@@ -1,5 +1,6 @@
 // src/components/postprocessor/ExportHtmlModal.tsx
 import React, { useState } from 'react';
+import {RodResult} from "../../types/sapr.types";
 
 interface SectionCalcResult {
     id: string;
@@ -21,10 +22,10 @@ interface UniformStepRow {
 }
 
 interface ExportHtmlModalProps {
-    rods: any[];
+    rods: RodResult[];
     displacements: number[];
-    sectionCalcHistory?: SectionCalcResult[];
-    uniformStepData?: UniformStepRow[];
+    sectionCalcHistory: SectionCalcResult[];
+    uniformStepData: UniformStepRow[];
     onClose: () => void;
 }
 
@@ -78,7 +79,7 @@ const ExportHtmlModal: React.FC<ExportHtmlModalProps> = ({
                     }
                 }
 
-                // Явное приведение типа к Element
+                // Явное приведение типа к Element и проверка на null
                 return el ? new XMLSerializer().serializeToString(el as Element) : '';
             };
 

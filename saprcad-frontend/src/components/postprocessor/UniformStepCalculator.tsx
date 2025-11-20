@@ -1,34 +1,36 @@
 // src/components/postprocessor/UniformStepCalculator.tsx
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { RodResult } from '../../types/sapr.types';
+
+export interface UniformStepRow {
+    rodId: number;
+    x: number;
+    N: number;
+    sigma: number;
+    u: number;
+    isBoundary: boolean;
+}
+
+export interface UniformStepHandle {
+    getStepData: () => UniformStepRow[];
+}
 
 interface Props {
     rods: RodResult[];
-    onStepDataChange?: (data: any[]) => void;
 }
 
-const UniformStepCalculator: React.FC<Props> = ({ rods, onStepDataChange }) => {
+const UniformStepCalculator = forwardRef<UniformStepHandle, Props>(({ rods }, ref) => {
     const [step, setStep] = useState<number>(0.5);
+    const [tableData, setTableData] = useState<UniformStepRow[]>([]);
 
-    const tableData = useMemo(() => {
+    const data = useMemo(() => {
         if (step <= 0) return [];
-
-        const rows: {
-            rodId: number;
-            x: number;
-            N: number;
-            sigma: number;
-            u: number;
-            isBoundary: boolean;
-        }[] = [];
-
+        const rows: UniformStepRow[] = [];
         rods.forEach(rod => {
             const L = rod.length;
             const points = new Set<number>();
-
             points.add(0);
             points.add(L);
-
             if (step < L) {
                 let x = step;
                 while (x < L) {
@@ -36,33 +38,32 @@ const UniformStepCalculator: React.FC<Props> = ({ rods, onStepDataChange }) => {
                     x += step;
                 }
             }
-
-            Array.from(points)
-                .sort((a, b) => a - b)
-                .forEach(x => {
-                    const N = rod.axialForceCoeffs.a0 + rod.axialForceCoeffs.a1 * x;
-                    const sigma = rod.stressCoeffs.a0 + rod.stressCoeffs.a1 * x;
-                    const u = rod.displacementCoeffs.a0 +
-                        rod.displacementCoeffs.a1 * x +
-                        rod.displacementCoeffs.a2 * x * x;
-                    rows.push({
-                        rodId: rod.rodId,
-                        x,
-                        N,
-                        sigma,
-                        u,
-                        isBoundary: x === 0 || x === L,
-                    });
+            Array.from(points).sort((a, b) => a - b).forEach(x => {
+                const N = rod.axialForceCoeffs.a0 + rod.axialForceCoeffs.a1 * x;
+                const sigma = rod.stressCoeffs.a0 + rod.stressCoeffs.a1 * x;
+                const u = rod.displacementCoeffs.a0 +
+                    rod.displacementCoeffs.a1 * x +
+                    rod.displacementCoeffs.a2 * x * x;
+                rows.push({
+                    rodId: rod.rodId,
+                    x,
+                    N,
+                    sigma,
+                    u,
+                    isBoundary: x === 0 || x === L,
                 });
+            });
         });
-
         return rows;
     }, [rods, step]);
 
-    // Вызываем пропс ТОЛЬКО при изменении данных, а не при каждом useMemo
     useEffect(() => {
-        onStepDataChange?.(tableData);
-    }, [tableData, onStepDataChange]);
+        setTableData(data);
+    }, [data]);
+
+    useImperativeHandle(ref, () => ({
+        getStepData: () => tableData,
+    }), [tableData]);
 
     return (
         <section style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#f9f9f9', borderRadius: '6px' }}>
@@ -85,7 +86,7 @@ const UniformStepCalculator: React.FC<Props> = ({ rods, onStepDataChange }) => {
                     onClick={() => {
                         const content = `Стержень,x,N(x),σ(x),u(x)\n` +
                             tableData.map(r =>
-                                `${r.rodId},${r.x.toFixed(3)},${r.N.toExponential(3)},${r.sigma.toExponential(3)},${r.u.toExponential(3)}`
+                                `${r.rodId},${r.x.toFixed(4)},${r.N.toExponential(4)},${r.sigma.toExponential(4)},${r.u.toExponential(6)}`
                             ).join('\n');
                         const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
                         const url = URL.createObjectURL(blob);
@@ -97,12 +98,12 @@ const UniformStepCalculator: React.FC<Props> = ({ rods, onStepDataChange }) => {
                     }}
                     style={{ padding: '4px 10px', fontSize: '0.9em' }}
                 >
-                    Экспорт в CSV
+                    📥 Экспорт в CSV
                 </button>
             </div>
 
             {tableData.length > 0 && (
-                <div style={{ maxHeight: '300px', overflow: 'auto' }}>
+                <div style={{ maxHeight: '250px', overflow: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9em' }}>
                         <thead>
                         <tr style={{ backgroundColor: '#4a90e2', color: 'white' }}>
@@ -130,12 +131,8 @@ const UniformStepCalculator: React.FC<Props> = ({ rods, onStepDataChange }) => {
                     </p>
                 </div>
             )}
-
-            {step <= 0 && (
-                <p style={{ color: 'red' }}>Шаг должен быть больше 0</p>
-            )}
         </section>
     );
-};
+});
 
 export default UniformStepCalculator;
